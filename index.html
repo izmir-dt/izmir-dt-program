@@ -53,6 +53,12 @@
   .guide h4{margin:0 0 8px 0;font-size:14px}
   .guide ol{margin:0 0 8px 18px;padding:0}
   .guide code{background:#f3f4f6;padding:1px 4px;border-radius:4px}
+  .entry{margin:10px 0;padding:10px;border:2px solid #f59e0b;background:#fffbeb;border-radius:8px;font-size:14px}
+  .entry code{background:#111827;color:#fff;padding:2px 6px;border-radius:4px}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .overlay.hidden{display:none}
+  .overlay-card{background:#fff;border-radius:12px;max-width:640px;width:92%;padding:16px;border:1px solid #d1d5db}
+  .overlay-card h3{margin:0 0 8px 0}
 
   @media print{
     body{background:#fff}
@@ -67,11 +73,28 @@
 </style>
 </head>
 <body>
+<div id="firstOpenOverlay" class="overlay">
+  <div class="overlay-card">
+    <h3>İlk Adım (Mecburi)</h3>
+    <p>1) Terminalde şu komutu çalıştır:</p>
+    <p><code>python3 -m http.server 4173 --bind 0.0.0.0</code></p>
+    <p>2) Tarayıcıdan şu adrese gir:</p>
+    <p><code>http://localhost:4173</code></p>
+    <p>3) Sağ panelde URL'leri girip <b>1) Kurulumu Yap + Oyunları Yükle</b> butonuna bas.</p>
+    <button class="primary" onclick="closeFirstOverlay()">Tamam, anladım</button>
+  </div>
+</div>
+
 <div class="wrapper">
   <div class="header">
     <div class="left">MART 2026</div>
     <div class="center">İZMİR DEVLET TİYATROSU MÜDÜRLÜĞÜ</div>
     <div class="right">MART 2026</div>
+  </div>
+
+
+  <div class="entry">
+    <b>ÖNEMLİ: Siteye giriş için</b> terminalde <code>python3 -m http.server 4173 --bind 0.0.0.0</code> çalıştır, sonra tarayıcıda <code>http://localhost:4173</code> aç.
   </div>
 
   <div class="quick-start">
@@ -188,6 +211,20 @@ function loadJSON(key,fallback){
 }
 function persist(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
 function normalize(v){ return (v||'').trim().toLocaleUpperCase('tr-TR'); }
+function closeFirstOverlay(){
+  const el=document.getElementById('firstOpenOverlay');
+  if(el) el.classList.add('hidden');
+  localStorage.setItem('dt-overlay-seen','1');
+}
+
+function maybeShowFirstOverlay(){
+  const seen=localStorage.getItem('dt-overlay-seen')==='1';
+  const el=document.getElementById('firstOpenOverlay');
+  if(!el) return;
+  if(seen) el.classList.add('hidden');
+  else el.classList.remove('hidden');
+}
+
 function setApiStatus(msg,isError=false){
   const el=document.getElementById('apiStatus');
   if(!el) return;
@@ -664,6 +701,7 @@ function setPrintSize(){
   }
   render();
   showFirstRunStatus();
+  maybeShowFirstOverlay();
 })();
 </script>
 </body>
