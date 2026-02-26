@@ -5,103 +5,634 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>İzmir DT Aylık Program</title>
 <style>
-body{margin:0;font-family:Arial;background:#eef1f4}
-.wrapper{max-width:1500px;margin:auto;padding:10px}
+  :root{
+    --header-height: 56px;
+    --scene-header-height: 44px;
+  }
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef1f4;color:#111827}
+  .wrapper{max-width:1800px;margin:auto;padding:10px}
+  .header{position:sticky;top:0;z-index:30;display:grid;grid-template-columns:220px 1fr 220px;background:#ffe600;border:1px solid #777;border-bottom:none;font-weight:800;align-items:center;height:var(--header-height)}
+  .header div{padding:10px 12px;font-size:20px}
+  .header .left{text-align:left}
+  .header .center{text-align:center}
+  .header .right{text-align:right}
 
-/* HEADER */
-.header{display:grid;grid-template-columns:180px 1fr 180px;background:#ffe600;border:1px solid #999;border-bottom:none;font-weight:800;align-items:center}
-.header div{padding:10px 12px;font-size:20px}
-.header .left{text-align:left}
-.header .center{text-align:center}
-.header .right{text-align:right}
+  .toolbar{margin:10px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  button, select{padding:8px 12px;font-weight:700;border:1px solid #1d4ed8;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}
+  button.secondary{background:#f3f4f6;color:#111827;border-color:#9ca3af}
+  input.inline{padding:7px 9px;border:1px solid #9ca3af;border-radius:6px;min-width:260px}
+  .color{width:26px;height:26px;border:1px solid #444;cursor:pointer;border-radius:4px}
 
-/* GRID */
-.grid{display:grid;grid-template-columns:220px 80px repeat(6,1fr) 220px;border:1px solid #999;background:#fff}
-.head{background:#e5e7eb;font-weight:700;text-align:center;padding:6px;border:1px solid #999;white-space:nowrap;font-size:12px}
-.cell{border:1px solid #999;padding:6px;min-height:32px}
-.day{background:#f9fafb;font-weight:700;display:flex;align-items:center;padding-left:10px;white-space:nowrap}
-.time{text-align:center}
-.selected{outline:3px solid #2563eb}
+  .schedule-wrap{overflow:auto;border:1px solid #777;background:#fff;max-height:72vh}
+  table{border-collapse:collapse;min-width:1500px;width:100%}
+  thead th{position:sticky;top:var(--header-height);z-index:20;background:#e5e7eb}
+  th, td{border:1px solid #777;padding:4px 6px;font-size:12px}
+  th{white-space:nowrap;text-align:center;font-weight:700;height:var(--scene-header-height)}
+  td.date-cell{background:#f9fafb;font-weight:700;min-width:190px}
+  td.time-cell{width:70px;text-align:center;background:#f8fafc}
+  td.play-cell{min-width:165px}
+  td.selected{outline:3px solid #2563eb;outline-offset:-2px}
+  td.row-painted{box-shadow:inset 0 0 0 999px rgba(59,130,246,0.08)}
+  td.conflict{background:#ffedd5}
+  td.critical-conflict{background:#fecaca !important}
+  input.cell-input{width:100%;border:none;background:transparent;outline:none;font:inherit}
 
-/* TOOLBAR */
-.toolbar{margin:10px 0;display:flex;gap:10px}
-button{padding:8px 14px;font-weight:700;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}
-button:hover{background:#1e4fd1}
-.color{width:28px;height:28px;border:1px solid #444;cursor:pointer}
+  .layout{display:grid;grid-template-columns:1fr 300px;gap:10px}
+  .panel{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:10px}
+  .panel h3{margin:0 0 8px 0;font-size:14px}
+  .warning{border:1px solid #fb923c;background:#fff7ed;border-radius:6px;padding:8px;font-size:12px;margin-bottom:8px}
+  .warning.critical{border-color:#dc2626;background:#fef2f2}
+  .warning small{display:block;margin-top:4px;color:#374151}
+  .admin textarea{width:100%;min-height:90px;font-family:monospace}
+  .help{margin:8px 0;padding:8px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:6px;font-size:12px;line-height:1.45}
+  .status{margin-top:8px;font-size:12px;color:#1f2937}
+  .quick-start{margin:10px 0;padding:10px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:8px;font-size:13px;line-height:1.5}
+  .quick-start b{display:block;margin-bottom:4px}
+  .primary{background:#16a34a;border-color:#15803d;color:#fff}
+  .guide{margin:10px 0;padding:10px;border:1px solid #d1d5db;background:#fff;border-radius:8px;font-size:13px}
+  .guide h4{margin:0 0 8px 0;font-size:14px}
+  .guide ol{margin:0 0 8px 18px;padding:0}
+  .guide code{background:#f3f4f6;padding:1px 4px;border-radius:4px}
 
-/* PRINT */
-@media print{
- body{background:white}
- .toolbar{display:none}
- @page{size:A4 landscape;margin:10mm}
-}
+  @media print{
+    body{background:#fff}
+    .toolbar,.panel{display:none !important}
+    .layout{display:block}
+    .schedule-wrap{max-height:none;overflow:visible;border:1px solid #333}
+    @page{size:A4 landscape;margin:8mm}
+    body.print-a3{zoom:1.18}
+    .header{position:static;height:auto}
+    thead th{position:static}
+  }
 </style>
 </head>
 <body>
 <div class="wrapper">
+  <div class="header">
+    <div class="left">MART 2026</div>
+    <div class="center">İZMİR DEVLET TİYATROSU MÜDÜRLÜĞÜ</div>
+    <div class="right">MART 2026</div>
+  </div>
 
-<div class="header">
- <div class="left">MART 2026</div>
- <div class="center">İZMİR DEVLET TİYATROSU MÜDÜRLÜĞÜ</div>
- <div class="right">MART 2026</div>
-</div>
+  <div class="quick-start">
+    <b>Ne yapmalıyım? (Hızlı Başlangıç)</b>
+    1) Admin Panel'e Apps Script <b>Oyun Listesi URL</b> ve <b>Yazma URL</b> yapıştır.
+    2) <b>Bağlantı Ayarını Kaydet</b> → <b>Oyunları API'den Yenile</b>.
+    3) Tabloda bir gün seç, oyunları yaz, sonra <b>Seçili Günü Sheet'e Yaz</b>.
+  </div>
 
-<div class="toolbar">
- <button onclick="window.print()">Yazdır</button>
- <div class="color" style="background:#fde047" onclick="paint('#fde047')"></div>
- <div class="color" style="background:#fecaca" onclick="paint('#fecaca')"></div>
- <div class="color" style="background:#bbf7d0" onclick="paint('#bbf7d0')"></div>
-</div>
 
-<div class="grid" id="grid"></div>
+  <details class="guide">
+    <summary><b>Nasıl test edeceğim? (Tek tek anlatım)</b></summary>
+    <h4>1) Yerelde çalıştır</h4>
+    <ol>
+      <li>Bu klasörde terminal aç.</li>
+      <li><code>python3 -m http.server 4173 --bind 0.0.0.0</code> çalıştır.</li>
+      <li>Tarayıcıdan <code>http://localhost:4173</code> aç.</li>
+    </ol>
+    <h4>2) Kurulum yap</h4>
+    <ol>
+      <li>Admin Panel'e <b>Oyun Listesi URL</b> ve <b>Yazma URL</b> yapıştır.</li>
+      <li><b>1) Kurulumu Yap + Oyunları Yükle</b> butonuna bas.</li>
+      <li>Durum satırında hata yoksa devam et.</li>
+    </ol>
+    <h4>3) Fonksiyon testleri</h4>
+    <ol>
+      <li>Bir gün seç, en az 2 sahneye oyun yaz.</li>
+      <li><b>Seçili Güne Toplu Doldur</b> ile hız testi yap.</li>
+      <li><b>Matine/Suare Ekle-Kaldır</b> ile çift slot test et.</li>
+      <li><b>Seçili Günü Sheet'e Yaz</b> ile Google Sheet'e yazmayı doğrula.</li>
+    </ol>
+  </details>
+
+  <div class="toolbar">
+    <button onclick="window.print()">Yazdır</button>
+    <select id="printSize" onchange="setPrintSize()">
+      <option value="a4">A4 Yatay</option>
+      <option value="a3">A3 Büyütülmüş</option>
+    </select>
+    <div class="color" style="background:#fde047" onclick="paintSelection('#fde047')" title="Sarı"></div>
+    <div class="color" style="background:#fecaca" onclick="paintSelection('#fecaca')" title="Kırmızı"></div>
+    <div class="color" style="background:#bbf7d0" onclick="paintSelection('#bbf7d0')" title="Yeşil"></div>
+    <input id="bulkPlay" class="inline" placeholder="Toplu doldurma için oyun adı" />
+    <button class="secondary" onclick="bulkFillDay()">Seçili Güne Toplu Doldur</button>
+    <button class="secondary" onclick="toggleMatinee()">Matine/Suare Ekle-Kaldır</button>
+    <button class="secondary" onclick="syncSelectedDayToSheet()">Seçili Günü Sheet'e Yaz</button>
+    <small>İpucu: Enter sağa geçer, Ctrl+Enter seçili hücrelere yazar, toplu yapıştırma destekli.</small>
+  </div>
+
+  <div class="layout">
+    <div class="schedule-wrap">
+      <table id="scheduleTable">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <datalist id="playOptions"></datalist>
+    </div>
+
+    <aside class="panel">
+      <h3>Çakışma Uyarıları</h3>
+      <div id="warnings"></div>
+
+      <div class="admin">
+        <h3>Admin Panel (Basit Kurulum)</h3>
+        <div class="help">
+          1) Apps Script'ten <b>Oyun Listesi URL</b> ve <b>Yazma URL</b> gir.<br/>
+          2) <b>Bağlantı Ayarını Kaydet</b>'e bas.<br/>
+          3) <b>Oyunları API'den Yenile</b> ile oyun adlarını çek.<br/>
+          4) Tabloda bir gün seçip <b>Seçili Günü Sheet'e Yaz</b> butonuna bas.
+        </div>
+        <small>Apps Script Oyun Listesi JSON URL</small>
+        <input id="gamesApiUrl" class="inline" placeholder="https://script.google.com/.../exec?api=games" />
+        <small>Apps Script Yazma API URL</small>
+        <input id="writeApiUrl" class="inline" placeholder="https://script.google.com/.../exec" />
+        <button class="primary" onclick="setupAndLoadGames()">1) Kurulumu Yap + Oyunları Yükle</button>
+        <button class="secondary" onclick="saveConnectionSettings()">Bağlantı Ayarını Kaydet</button>
+        <button class="secondary" onclick="reloadCatalogFromApi()">Oyunları API'den Yenile</button>
+        <div id="apiStatus" class="status"></div>
+        <small>Sahne adları (satır başına 1 sahne)</small>
+        <textarea id="sceneEditor"></textarea>
+        <small>Oyun/Cast JSON (kritik rol için <code>"critical":true</code>)</small>
+        <textarea id="playEditor"></textarea>
+        <button class="secondary" onclick="saveAdmin()">Yönetimi Kaydet</button>
+      </div>
+    </aside>
+  </div>
 </div>
 
 <script>
-const grid=document.getElementById('grid');
-const scenes=["KARŞIYAKA RAGIP HAYKIR","BKSM BOZKURT KURUÇ","URLA AKM","TURNE","TURNE","TURNE"];
-let selected=[];
+const defaults = {
+  scenes:["KARŞIYAKA RAGIP HAYKIR","BKSM BOZKURT KURUÇ","URLA AKM","TURNE-1","TURNE-2","TURNE-3"],
+  plays:[
+    {name:"HAMLET", cast:[{name:"ALİ",critical:true},{name:"AYŞE"},{name:"MURAT"}]},
+    {name:"MACBETH", cast:[{name:"ALİ",critical:true},{name:"SELİN"}]},
+    {name:"KEŞANLI ALİ DESTANI", cast:[{name:"DENİZ"},{name:"AYŞE",critical:true}]},
+    {name:"CİMRİ", cast:[{name:"MURAT"},{name:"ECE"}]}
+  ]
+};
 
-function cell(txt,cls='cell'){
- const d=document.createElement('div');d.className=cls;d.textContent=txt;enableSelect(d);return d;
+let scenes = loadJSON('dt-scenes', defaults.scenes);
+let playCatalog = loadJSON('dt-plays', defaults.plays);
+const ignoredConflicts = new Set(loadJSON('dt-ignored', []));
+let gamesApiUrl = localStorage.getItem('dt-games-api-url') || '';
+let writeApiUrl = localStorage.getItem('dt-write-api-url') || '';
+const monthRows = buildMonthRows();
+let selectedCells=[];
+let activeCell=null;
+
+function loadJSON(key,fallback){
+  try{ return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch{ return fallback; }
+}
+function persist(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+function normalize(v){ return (v||'').trim().toLocaleUpperCase('tr-TR'); }
+function setApiStatus(msg,isError=false){
+  const el=document.getElementById('apiStatus');
+  if(!el) return;
+  el.textContent=msg||'';
+  el.style.color=isError ? '#b91c1c' : '#1f2937';
 }
 
-function header(){
- grid.innerHTML='';
- grid.appendChild(cell('', 'head'));
- grid.appendChild(cell('SAAT','head'));
- scenes.forEach(s=>grid.appendChild(cell(s,'head')));
- grid.appendChild(cell('', 'head'));
+function showFirstRunStatus(){
+  const hasGames=Boolean(gamesApiUrl);
+  const hasWrite=Boolean(writeApiUrl);
+  if(!hasGames || !hasWrite){
+    setApiStatus('Adım 1: Games API + Write API URL girin. Sonra "1) Kurulumu Yap + Oyunları Yükle" butonuna basın.', true);
+  }else{
+    setApiStatus('Adım 2: Tabloda günü seçin, oyunları girin. Adım 3: "Seçili Günü Sheet'e Yaz" butonuna basın.');
+  }
 }
 
-function build(){
- header();
- const days=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
- for(let d=1;d<=31;d++){
-   const date=new Date(2026,2,d);
-   const name=days[date.getDay()];
-   addRow(`${d} Mart 2026 ${name}`);
- }
+function buildMonthRows(){
+  const rows=[];
+  const dayNames=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+  for(let day=1;day<=31;day++){
+    const date=new Date(2026,2,day);
+    rows.push({
+      day,
+      label:`${day} Mart 2026 ${dayNames[date.getDay()]}`,
+      slots:[{time:'', plays:Array(scenes.length).fill('')}],
+      rowColor:''
+    });
+  }
+  return rows;
 }
 
-function addRow(label){
- grid.appendChild(cell(label,'cell day'));
- const t=cell('','cell time');t.contentEditable=true;grid.appendChild(t);
- scenes.forEach(()=>{ const c=cell('');c.contentEditable=true;grid.appendChild(c); });
- grid.appendChild(cell(label,'cell day'));
+function render(){
+  renderHead();
+  renderBody();
+  renderPlayOptions();
+  document.getElementById('sceneEditor').value = scenes.join('\n');
+  document.getElementById('playEditor').value = JSON.stringify(playCatalog,null,2);
+  document.getElementById('gamesApiUrl').value = gamesApiUrl;
+  document.getElementById('writeApiUrl').value = writeApiUrl;
+  evaluateConflicts();
 }
 
-function enableSelect(el){
- el.addEventListener('mousedown',e=>{if(!e.ctrlKey)clearSel();toggle(el)});
+function renderHead(){
+  const thead=document.getElementById('thead');
+  thead.innerHTML='';
+  const tr=document.createElement('tr');
+  tr.appendChild(th(''));
+  tr.appendChild(th('SAAT'));
+  scenes.forEach(s=>tr.appendChild(th(s)));
+  tr.appendChild(th(''));
+  thead.appendChild(tr);
 }
-function toggle(el){
- el.classList.toggle('selected');
- if(selected.includes(el))selected=selected.filter(x=>x!==el); else selected.push(el);
+function th(txt){const x=document.createElement('th');x.textContent=txt;return x;}
+
+function renderBody(){
+  const tbody=document.getElementById('tbody');
+  tbody.innerHTML='';
+  monthRows.forEach(dayObj=>{
+    dayObj.slots.forEach((slot,slotIndex)=>{
+      const tr=document.createElement('tr');
+      tr.dataset.day=dayObj.day;
+      tr.dataset.slot=slotIndex;
+
+      if(slotIndex===0){
+        const left=td(dayObj.label,'date-cell');
+        left.dataset.type='date'; left.dataset.day=dayObj.day; left.rowSpan=dayObj.slots.length;
+        tr.appendChild(left);
+      }
+
+      const timeCell=td('', 'time-cell');
+      const timeInput=cellInput(slot.time,'Saat');
+      timeInput.oninput=(e)=>{slot.time=e.target.value};
+      timeCell.appendChild(timeInput);
+      timeCell.dataset.type='time';timeCell.dataset.day=dayObj.day;timeCell.dataset.slot=slotIndex;
+      tr.appendChild(timeCell);
+
+      slot.plays.forEach((play,col)=>{
+        const c=td('', 'play-cell');
+        c.dataset.type='play';c.dataset.day=dayObj.day;c.dataset.slot=slotIndex;c.dataset.col=col;
+        const input=cellInput(play,'Oyun');
+        input.setAttribute('list','playOptions');
+        input.oninput=(e)=>{
+          monthRows[dayObj.day-1].slots[slotIndex].plays[col]=e.target.value;
+          evaluateConflicts();
+        };
+        c.appendChild(input);
+        tr.appendChild(c);
+      });
+
+      if(slotIndex===0){
+        const right=td(dayObj.label,'date-cell');
+        right.dataset.type='date'; right.dataset.day=dayObj.day; right.rowSpan=dayObj.slots.length;
+        tr.appendChild(right);
+      }
+
+      tbody.appendChild(tr);
+    });
+  });
+
+  bindCellSelection();
 }
-function clearSel(){selected.forEach(x=>x.classList.remove('selected'));selected=[]}
 
-function paint(color){selected.forEach(c=>c.style.background=color);clearSel()}
+function td(txt,cls=''){const x=document.createElement('td');x.className=cls;x.textContent=txt;return x;}
+function cellInput(val,ph){const i=document.createElement('input');i.className='cell-input';i.value=val||'';i.placeholder=ph;return i;}
 
-build();
+
+function getInputFromCell(cell){
+  return cell ? cell.querySelector('input.cell-input') : null;
+}
+
+function focusCell(cell){
+  const input=getInputFromCell(cell);
+  if(input){
+    input.focus();
+    input.select();
+  }
+  activeCell=cell || null;
+}
+
+function getNavCell(cell,dx,dy){
+  if(!cell) return null;
+  const day=Number(cell.dataset.day || 0);
+  const slot=Number(cell.dataset.slot || 0);
+  const col=Number(cell.dataset.col || -1);
+  if(day<=0 || col<0) return null;
+  const nextDay=day+dy;
+  if(nextDay<1 || nextDay>monthRows.length) return null;
+  const targetSlot=Math.max(0, Math.min(slot, monthRows[nextDay-1].slots.length-1));
+  const selector=`td[data-type='play'][data-day='${nextDay}'][data-slot='${targetSlot}'][data-col='${col+dx}']`;
+  const sameRow=`td[data-type='play'][data-day='${day}'][data-slot='${slot}'][data-col='${col+dx}']`;
+  return document.querySelector(dx !== 0 ? sameRow : selector);
+}
+
+function applyValueToCell(cell,value){
+  const day=Number(cell?.dataset.day || 0);
+  const slot=Number(cell?.dataset.slot || 0);
+  const col=Number(cell?.dataset.col ?? -1);
+  if(day<=0 || col<0) return;
+  monthRows[day-1].slots[slot].plays[col]=value;
+  const input=getInputFromCell(cell);
+  if(input) input.value=value;
+}
+
+function applyValueToSelection(value){
+  const playCells=selectedCells.filter(c=>c.dataset.type==='play');
+  if(!playCells.length) return;
+  playCells.forEach(cell=>applyValueToCell(cell,value));
+  evaluateConflicts();
+}
+
+function parseClipboardGrid(text){
+  return String(text || '')
+    .replace(/\r\n/g,'\n')
+    .replace(/\r/g,'\n')
+    .split('\n')
+    .filter(Boolean)
+    .map(row=>row.split('\t'));
+}
+
+function pasteGridIntoSchedule(startCell, grid){
+  if(!startCell || !Array.isArray(grid) || !grid.length) return;
+  const baseDay=Number(startCell.dataset.day || 0);
+  const baseSlot=Number(startCell.dataset.slot || 0);
+  const baseCol=Number(startCell.dataset.col || 0);
+  grid.forEach((row,r)=>{
+    row.forEach((value,c)=>{
+      const day=baseDay+r;
+      if(day<1 || day>monthRows.length) return;
+      const slot=Math.max(0, Math.min(baseSlot, monthRows[day-1].slots.length-1));
+      const col=baseCol+c;
+      const cell=document.querySelector(`td[data-type='play'][data-day='${day}'][data-slot='${slot}'][data-col='${col}']`);
+      if(!cell) return;
+      applyValueToCell(cell,value.trim());
+    });
+  });
+  evaluateConflicts();
+}
+
+function bindCellSelection(){
+  document.querySelectorAll("tbody td[data-type='play'], tbody td[data-type='time'], tbody td[data-type='date']").forEach(el=>{
+    el.onmousedown=(e)=>{
+      if(e.target.tagName==='INPUT' && !e.ctrlKey){ clearSelection(); }
+      if(!e.ctrlKey) clearSelection();
+      toggleSelection(el);
+      if(el.dataset.type==='play') focusCell(el);
+    };
+  });
+
+  document.querySelectorAll("tbody td[data-type='play'] input.cell-input").forEach(input=>{
+    const cell=input.closest('td');
+    input.onfocus=()=>{ activeCell=cell; };
+    input.onkeydown=(e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        if(e.ctrlKey){
+          applyValueToSelection(input.value);
+          return;
+        }
+        const next=getNavCell(cell,1,0);
+        if(next) focusCell(next);
+      }else if(e.key==='ArrowRight' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,1,0); if(n) focusCell(n); }
+      else if(e.key==='ArrowLeft' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,-1,0); if(n) focusCell(n); }
+      else if(e.key==='ArrowDown' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,0,1); if(n) focusCell(n); }
+      else if(e.key==='ArrowUp' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,0,-1); if(n) focusCell(n); }
+    };
+    input.onpaste=(e)=>{
+      const text=e.clipboardData?.getData('text/plain');
+      const grid=parseClipboardGrid(text);
+      if(grid.length<=1 && (grid[0]||[]).length<=1) return;
+      e.preventDefault();
+      pasteGridIntoSchedule(cell, grid);
+    };
+  });
+}
+function toggleSelection(el){
+  if(selectedCells.includes(el)){
+    selectedCells=selectedCells.filter(c=>c!==el); el.classList.remove('selected');
+  }else{ selectedCells.push(el); el.classList.add('selected'); }
+}
+function clearSelection(){ selectedCells.forEach(c=>c.classList.remove('selected')); selectedCells=[]; }
+
+function paintSelection(color){
+  const daySet=new Set();
+  selectedCells.forEach(cell=>{
+    const day=Number(cell.dataset.day);
+    if(cell.dataset.type==='date') daySet.add(day);
+    else cell.style.background=color;
+  });
+  daySet.forEach(day=>{
+    monthRows[day-1].rowColor=color;
+    document.querySelectorAll(`tbody td[data-day='${day}']`).forEach(td=>{ td.style.background=color; td.classList.add('row-painted'); });
+  });
+  clearSelection();
+}
+
+function bulkFillDay(){
+  const play=document.getElementById('bulkPlay').value.trim();
+  if(!play) return;
+  const dayCell=selectedCells.find(c=>c.dataset.day);
+  if(!dayCell) return;
+  const day=Number(dayCell.dataset.day);
+  monthRows[day-1].slots.forEach(slot=> slot.plays=slot.plays.map(()=>play));
+  renderBody();
+  evaluateConflicts();
+}
+
+function getSelectedDay(){
+  const dayCell=selectedCells.find(c=>c.dataset.day);
+  return dayCell ? Number(dayCell.dataset.day) : 0;
+}
+
+function toggleMatinee(){
+  const day=getSelectedDay();
+  if(!day) return;
+  const dayObj=monthRows[day-1];
+  if(dayObj.slots.length===1){
+    dayObj.slots.push({time:'', plays:Array(scenes.length).fill('')});
+  }else{
+    const suare=dayObj.slots[1];
+    const hasData=suare.time || suare.plays.some(Boolean);
+    if(!hasData) dayObj.slots.pop();
+    else alert('Suare satırında veri var. Önce temizleyin.');
+  }
+  renderBody();
+  evaluateConflicts();
+}
+
+function saveConnectionSettings(){
+  gamesApiUrl = document.getElementById('gamesApiUrl').value.trim();
+  writeApiUrl = document.getElementById('writeApiUrl').value.trim();
+  localStorage.setItem('dt-games-api-url', gamesApiUrl);
+  localStorage.setItem('dt-write-api-url', writeApiUrl);
+  setApiStatus('Bağlantı ayarları kaydedildi.');
+}
+
+
+async function setupAndLoadGames(){
+  saveConnectionSettings();
+  setApiStatus('Kurulum kaydedildi. Oyun listesi yükleniyor...');
+  await reloadCatalogFromApi();
+}
+
+async function reloadCatalogFromApi(){
+  const url=document.getElementById('gamesApiUrl').value.trim();
+  if(!url) return setApiStatus('Önce oyun listesi API URL girin.', true);
+  try{
+    const r=await fetch(url);
+    const data=await r.json();
+    const apiPlays = normalizeApiPlays(data);
+    if(!apiPlays.length) return setApiStatus('API verisi boş veya format uyumsuz.', true);
+    playCatalog=apiPlays;
+    persist('dt-plays', playCatalog);
+    gamesApiUrl=url;
+    localStorage.setItem('dt-games-api-url', gamesApiUrl);
+    render();
+    setApiStatus('Oyun listesi API üzerinden güncellendi.');
+  }catch(err){
+    setApiStatus('API okunamadı: ' + err.message, true);
+  }
+}
+
+function normalizeApiPlays(data){
+  if(Array.isArray(data?.plays)) return data.plays;
+  if(Array.isArray(data?.games)) return data.games.map(name=>({name,cast:[]}));
+  if(Array.isArray(data)) return data.map(name=>({name,cast:[]}));
+  return [];
+}
+
+async function syncSelectedDayToSheet(){
+  const day=getSelectedDay();
+  if(!day) return setApiStatus('Önce tabloda bir gün seçin.', true);
+  const url=(document.getElementById('writeApiUrl').value || '').trim();
+  if(!url) return setApiStatus('Yazma API URL girin.', true);
+
+  const dayObj=monthRows[day-1];
+  const requests=[];
+  dayObj.slots.forEach(slot=>{
+    slot.plays.forEach((play,col)=>{
+      const cleaned=play.trim();
+      if(!cleaned) return;
+      requests.push({
+        action:'writeProgramDay',
+        date:`2026-03-${String(day).padStart(2,'0')}`,
+        play:cleaned,
+        time:(slot.time || '').trim(),
+        stage:scenes[col]
+      });
+    });
+  });
+  if(!requests.length) return setApiStatus('Seçili günde yazılacak oyun yok.', true);
+
+  try{
+    for(const payload of requests){
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    }
+    writeApiUrl=url;
+    localStorage.setItem('dt-write-api-url', writeApiUrl);
+    setApiStatus("Seçili gün Google Sheet API'ye yazıldı.");
+  }catch(err){
+    setApiStatus('Yazma başarısız: '+err.message+' (Apps Script doPost + CORS ayarını kontrol edin)', true);
+  }
+}
+
+function renderPlayOptions(){
+  const dl=document.getElementById('playOptions');
+  dl.innerHTML='';
+  playCatalog.forEach(p=>{
+    const opt=document.createElement('option');
+    opt.value=p.name;
+    dl.appendChild(opt);
+  });
+}
+
+function evaluateConflicts(){
+  document.querySelectorAll('.conflict,.critical-conflict').forEach(x=>x.classList.remove('conflict','critical-conflict'));
+  const warnings=[];
+  const playMap = new Map(playCatalog.map(p=>[normalize(p.name), p]));
+
+  monthRows.forEach(dayObj=>{
+    dayObj.slots.forEach((slot,slotIndex)=>{
+      const actorMap={};
+      slot.plays.forEach((playName,col)=>{
+        const play=playMap.get(normalize(playName));
+        if(!play) return;
+        (play.cast||[]).forEach(person=>{
+          const name=normalize(person.name);
+          actorMap[name]=actorMap[name]||[];
+          actorMap[name].push({col,critical:Boolean(person.critical),play:play.name});
+        });
+      });
+      Object.entries(actorMap).forEach(([actor,entries])=>{
+        if(entries.length<2) return;
+        const isCritical=entries.some(e=>e.critical);
+        const conflictKey=`${dayObj.day}|${slotIndex}|${actor}`;
+        if(ignoredConflicts.has(conflictKey)) return;
+        warnings.push({day:dayObj.label,slot:slotIndex+1,actor,isCritical,key:conflictKey});
+        entries.forEach(e=>{
+          const cell=document.querySelector(`td[data-day='${dayObj.day}'][data-slot='${slotIndex}'][data-col='${e.col}']`);
+          if(cell) cell.classList.add(isCritical ? 'critical-conflict':'conflict');
+        });
+      });
+    });
+  });
+
+  renderWarnings(warnings);
+}
+
+function renderWarnings(warnings){
+  const box=document.getElementById('warnings');
+  box.innerHTML='';
+  if(!warnings.length){ box.innerHTML='<small>Çakışma yok.</small>'; return; }
+  warnings.forEach(w=>{
+    const div=document.createElement('div');
+    div.className=`warning ${w.isCritical?'critical':''}`;
+    div.innerHTML=`<strong>${w.actor}</strong> aynı gün/saatte birden fazla sahnede.<small>${w.day} - Slot ${w.slot}</small>`;
+    const ignore=document.createElement('label');
+    ignore.innerHTML=`<input type='checkbox' /> Yoksay`;
+    ignore.querySelector('input').onchange=(e)=>{
+      if(e.target.checked) ignoredConflicts.add(w.key); else ignoredConflicts.delete(w.key);
+      persist('dt-ignored', Array.from(ignoredConflicts));
+      evaluateConflicts();
+    };
+    div.appendChild(ignore);
+    box.appendChild(div);
+  });
+}
+
+function saveAdmin(){
+  const sceneLines=document.getElementById('sceneEditor').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!sceneLines.length) return alert('En az 1 sahne girin.');
+  let parsedPlays;
+  try{ parsedPlays=JSON.parse(document.getElementById('playEditor').value); }
+  catch{ return alert('Oyun JSON formatı hatalı.'); }
+  scenes=sceneLines;
+  playCatalog=parsedPlays;
+  persist('dt-scenes', scenes);
+  persist('dt-plays', playCatalog);
+  monthRows.forEach(day=>day.slots.forEach(slot=>{
+    while(slot.plays.length<scenes.length) slot.plays.push('');
+    slot.plays=slot.plays.slice(0,scenes.length);
+  }));
+  render();
+}
+
+function setPrintSize(){
+  const v=document.getElementById('printSize').value;
+  document.body.classList.toggle('print-a3', v==='a3');
+}
+
+(async function init(){
+  if(gamesApiUrl){
+    try{
+      const r=await fetch(gamesApiUrl);
+      const data=await r.json();
+      const apiPlays=normalizeApiPlays(data);
+      if(apiPlays.length) playCatalog=apiPlays;
+    }catch{ /* bağlantı yoksa local veri ile devam */ }
+  }
+  render();
+  showFirstRunStatus();
+})();
 </script>
 </body>
 </html>
