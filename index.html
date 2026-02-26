@@ -59,6 +59,10 @@
   .overlay.hidden{display:none}
   .overlay-card{background:#fff;border-radius:12px;max-width:640px;width:92%;padding:16px;border:1px solid #d1d5db}
   .overlay-card h3{margin:0 0 8px 0}
+  .simple-box{margin:10px 0;padding:12px;border:1px solid #d1d5db;background:#fff;border-radius:10px}
+  .simple-box h3{margin:0 0 8px 0;font-size:18px}
+  .simple-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .hidden-advanced{display:none}
 
   @media print{
     body{background:#fff}
@@ -97,7 +101,17 @@
     <b>ÖNEMLİ: Siteye giriş için</b> terminalde <code>python3 -m http.server 4173 --bind 0.0.0.0</code> çalıştır, sonra tarayıcıda <code>http://localhost:4173</code> aç.
   </div>
 
-  <div class="quick-start">
+
+  <div class="simple-box">
+    <h3>Sadece 2 seçenek var 👇</h3>
+    <div class="simple-actions">
+      <button class="primary" onclick="startDemoMode()">1) Sadece Dene (Demo)</button>
+      <button class="secondary" onclick="showGoogleSetup()">2) Google Sheet Bağla</button>
+    </div>
+    <small id="simpleStatus">Önce bir butona bas. Gerisini otomatik yönlendireceğim.</small>
+  </div>
+
+  <div id="quickStartBox" class="quick-start hidden-advanced">
     <b>Ne yapmalıyım? (Hızlı Başlangıç)</b>
     1) Admin Panel'e Apps Script <b>Oyun Listesi URL</b> ve <b>Yazma URL</b> yapıştır.
     2) <b>Bağlantı Ayarını Kaydet</b> → <b>Oyunları API'den Yenile</b>.
@@ -105,7 +119,7 @@
   </div>
 
 
-  <details class="guide">
+  <details id="guideBox" class="guide hidden-advanced">
     <summary><b>Nasıl test edeceğim? (Tek tek anlatım)</b></summary>
     <h4>1) Yerelde çalıştır</h4>
     <ol>
@@ -159,7 +173,7 @@
       <h3>Çakışma Uyarıları</h3>
       <div id="warnings"></div>
 
-      <div class="admin">
+      <div id="adminPanelBox" class="admin hidden-advanced">
         <h3>Admin Panel (Basit Kurulum)</h3>
         <div class="help">
           1) Apps Script'ten <b>Oyun Listesi URL</b> ve <b>Yazma URL</b> gir.<br/>
@@ -211,6 +225,29 @@ function loadJSON(key,fallback){
 }
 function persist(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
 function normalize(v){ return (v||'').trim().toLocaleUpperCase('tr-TR'); }
+function setSimpleStatus(msg){
+  const el=document.getElementById('simpleStatus');
+  if(el) el.textContent=msg;
+}
+
+function openAdvancedPanels(){
+  document.getElementById('quickStartBox')?.classList.remove('hidden-advanced');
+  document.getElementById('guideBox')?.classList.remove('hidden-advanced');
+  document.getElementById('adminPanelBox')?.classList.remove('hidden-advanced');
+}
+
+function startDemoMode(){
+  openAdvancedPanels();
+  fillDemoData();
+  setSimpleStatus('Demo verisi yüklendi. Şimdi tabloda istediğin gibi dene.');
+}
+
+function showGoogleSetup(){
+  openAdvancedPanels();
+  setSimpleStatus('Sağ panel açıldı. URL'leri girip "1) Kurulumu Yap + Oyunları Yükle" butonuna bas.');
+  setApiStatus('Google bağlantı modu açık: URL gir ve kurulum butonuna bas.');
+}
+
 function closeFirstOverlay(){
   const el=document.getElementById('firstOpenOverlay');
   if(el) el.classList.add('hidden');
@@ -700,6 +737,8 @@ function setPrintSize(){
     }catch{ /* bağlantı yoksa local veri ile devam */ }
   }
   render();
+  const hasSetup = Boolean(gamesApiUrl || writeApiUrl);
+  if(hasSetup) openAdvancedPanels();
   showFirstRunStatus();
   maybeShowFirstOverlay();
 })();
