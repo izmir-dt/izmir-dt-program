@@ -5,103 +5,373 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>İzmir DT Aylık Program</title>
 <style>
-body{margin:0;font-family:Arial;background:#eef1f4}
-.wrapper{max-width:1500px;margin:auto;padding:10px}
+  :root{
+    --header-height: 56px;
+    --scene-header-height: 44px;
+  }
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef1f4;color:#111827}
+  .wrapper{max-width:1800px;margin:auto;padding:10px}
+  .header{position:sticky;top:0;z-index:30;display:grid;grid-template-columns:220px 1fr 220px;background:#ffe600;border:1px solid #777;border-bottom:none;font-weight:800;align-items:center;height:var(--header-height)}
+  .header div{padding:10px 12px;font-size:20px}
+  .header .left{text-align:left}
+  .header .center{text-align:center}
+  .header .right{text-align:right}
 
-/* HEADER */
-.header{display:grid;grid-template-columns:180px 1fr 180px;background:#ffe600;border:1px solid #999;border-bottom:none;font-weight:800;align-items:center}
-.header div{padding:10px 12px;font-size:20px}
-.header .left{text-align:left}
-.header .center{text-align:center}
-.header .right{text-align:right}
+  .toolbar{margin:10px 0;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  button, select{padding:8px 12px;font-weight:700;border:1px solid #1d4ed8;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}
+  button.secondary{background:#f3f4f6;color:#111827;border-color:#9ca3af}
+  input.inline{padding:7px 9px;border:1px solid #9ca3af;border-radius:6px;min-width:260px}
+  .color{width:26px;height:26px;border:1px solid #444;cursor:pointer;border-radius:4px}
 
-/* GRID */
-.grid{display:grid;grid-template-columns:220px 80px repeat(6,1fr) 220px;border:1px solid #999;background:#fff}
-.head{background:#e5e7eb;font-weight:700;text-align:center;padding:6px;border:1px solid #999;white-space:nowrap;font-size:12px}
-.cell{border:1px solid #999;padding:6px;min-height:32px}
-.day{background:#f9fafb;font-weight:700;display:flex;align-items:center;padding-left:10px;white-space:nowrap}
-.time{text-align:center}
-.selected{outline:3px solid #2563eb}
+  .schedule-wrap{overflow:auto;border:1px solid #777;background:#fff;max-height:72vh}
+  table{border-collapse:collapse;min-width:1500px;width:100%}
+  thead th{position:sticky;top:var(--header-height);z-index:20;background:#e5e7eb}
+  th, td{border:1px solid #777;padding:4px 6px;font-size:12px}
+  th{white-space:nowrap;text-align:center;font-weight:700;height:var(--scene-header-height)}
+  td.date-cell{background:#f9fafb;font-weight:700;min-width:190px}
+  td.time-cell{width:70px;text-align:center;background:#f8fafc}
+  td.play-cell{min-width:165px}
+  td.selected{outline:3px solid #2563eb;outline-offset:-2px}
+  td.row-painted{box-shadow:inset 0 0 0 999px rgba(59,130,246,0.08)}
+  td.conflict{background:#ffedd5}
+  td.critical-conflict{background:#fecaca !important}
+  input.cell-input{width:100%;border:none;background:transparent;outline:none;font:inherit}
 
-/* TOOLBAR */
-.toolbar{margin:10px 0;display:flex;gap:10px}
-button{padding:8px 14px;font-weight:700;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}
-button:hover{background:#1e4fd1}
-.color{width:28px;height:28px;border:1px solid #444;cursor:pointer}
+  .layout{display:grid;grid-template-columns:1fr 300px;gap:10px}
+  .panel{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:10px}
+  .panel h3{margin:0 0 8px 0;font-size:14px}
+  .warning{border:1px solid #fb923c;background:#fff7ed;border-radius:6px;padding:8px;font-size:12px;margin-bottom:8px}
+  .warning.critical{border-color:#dc2626;background:#fef2f2}
+  .warning small{display:block;margin-top:4px;color:#374151}
+  .admin textarea{width:100%;min-height:90px;font-family:monospace}
 
-/* PRINT */
-@media print{
- body{background:white}
- .toolbar{display:none}
- @page{size:A4 landscape;margin:10mm}
-}
+  @media print{
+    body{background:#fff}
+    .toolbar,.panel{display:none !important}
+    .layout{display:block}
+    .schedule-wrap{max-height:none;overflow:visible;border:1px solid #333}
+    @page{size:A4 landscape;margin:8mm}
+    body.print-a3{zoom:1.18}
+    .header{position:static;height:auto}
+    thead th{position:static}
+  }
 </style>
 </head>
 <body>
 <div class="wrapper">
+  <div class="header">
+    <div class="left">MART 2026</div>
+    <div class="center">İZMİR DEVLET TİYATROSU MÜDÜRLÜĞÜ</div>
+    <div class="right">MART 2026</div>
+  </div>
 
-<div class="header">
- <div class="left">MART 2026</div>
- <div class="center">İZMİR DEVLET TİYATROSU MÜDÜRLÜĞÜ</div>
- <div class="right">MART 2026</div>
-</div>
+  <div class="toolbar">
+    <button onclick="window.print()">Yazdır</button>
+    <select id="printSize" onchange="setPrintSize()">
+      <option value="a4">A4 Yatay</option>
+      <option value="a3">A3 Büyütülmüş</option>
+    </select>
+    <div class="color" style="background:#fde047" onclick="paintSelection('#fde047')" title="Sarı"></div>
+    <div class="color" style="background:#fecaca" onclick="paintSelection('#fecaca')" title="Kırmızı"></div>
+    <div class="color" style="background:#bbf7d0" onclick="paintSelection('#bbf7d0')" title="Yeşil"></div>
+    <input id="bulkPlay" class="inline" placeholder="Toplu doldurma için oyun adı" />
+    <button class="secondary" onclick="bulkFillDay()">Seçili Güne Toplu Doldur</button>
+    <button class="secondary" onclick="toggleMatinee()">Matine/Suare Ekle-Kaldır</button>
+  </div>
 
-<div class="toolbar">
- <button onclick="window.print()">Yazdır</button>
- <div class="color" style="background:#fde047" onclick="paint('#fde047')"></div>
- <div class="color" style="background:#fecaca" onclick="paint('#fecaca')"></div>
- <div class="color" style="background:#bbf7d0" onclick="paint('#bbf7d0')"></div>
-</div>
+  <div class="layout">
+    <div class="schedule-wrap">
+      <table id="scheduleTable">
+        <thead id="thead"></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <datalist id="playOptions"></datalist>
+    </div>
 
-<div class="grid" id="grid"></div>
+    <aside class="panel">
+      <h3>Çakışma Uyarıları</h3>
+      <div id="warnings"></div>
+
+      <div class="admin">
+        <h3>Admin Panel</h3>
+        <small>Sahne adları (satır başına 1 sahne)</small>
+        <textarea id="sceneEditor"></textarea>
+        <small>Oyun/Cast JSON (kritik rol için <code>"critical":true</code>)</small>
+        <textarea id="playEditor"></textarea>
+        <button class="secondary" onclick="saveAdmin()">Yönetimi Kaydet</button>
+      </div>
+    </aside>
+  </div>
 </div>
 
 <script>
-const grid=document.getElementById('grid');
-const scenes=["KARŞIYAKA RAGIP HAYKIR","BKSM BOZKURT KURUÇ","URLA AKM","TURNE","TURNE","TURNE"];
-let selected=[];
+const defaults = {
+  scenes:["KARŞIYAKA RAGIP HAYKIR","BKSM BOZKURT KURUÇ","URLA AKM","TURNE-1","TURNE-2","TURNE-3"],
+  plays:[
+    {name:"HAMLET", cast:[{name:"ALİ",critical:true},{name:"AYŞE"},{name:"MURAT"}]},
+    {name:"MACBETH", cast:[{name:"ALİ",critical:true},{name:"SELİN"}]},
+    {name:"KEŞANLI ALİ DESTANI", cast:[{name:"DENİZ"},{name:"AYŞE",critical:true}]},
+    {name:"CİMRİ", cast:[{name:"MURAT"},{name:"ECE"}]}
+  ]
+};
 
-function cell(txt,cls='cell'){
- const d=document.createElement('div');d.className=cls;d.textContent=txt;enableSelect(d);return d;
+let scenes = loadJSON('dt-scenes', defaults.scenes);
+let playCatalog = loadJSON('dt-plays', defaults.plays);
+const ignoredConflicts = new Set(loadJSON('dt-ignored', []));
+const monthRows = buildMonthRows();
+let selectedCells=[];
+
+function loadJSON(key,fallback){
+  try{ return JSON.parse(localStorage.getItem(key)) ?? fallback; }
+  catch{ return fallback; }
+}
+function persist(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+function normalize(v){ return (v||'').trim().toLocaleUpperCase('tr-TR'); }
+
+function buildMonthRows(){
+  const rows=[];
+  const dayNames=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+  for(let day=1;day<=31;day++){
+    const date=new Date(2026,2,day);
+    rows.push({
+      day,
+      label:`${day} Mart 2026 ${dayNames[date.getDay()]}`,
+      slots:[{time:'', plays:Array(scenes.length).fill('')}],
+      rowColor:''
+    });
+  }
+  return rows;
 }
 
-function header(){
- grid.innerHTML='';
- grid.appendChild(cell('', 'head'));
- grid.appendChild(cell('SAAT','head'));
- scenes.forEach(s=>grid.appendChild(cell(s,'head')));
- grid.appendChild(cell('', 'head'));
+function render(){
+  renderHead();
+  renderBody();
+  renderPlayOptions();
+  document.getElementById('sceneEditor').value = scenes.join('\n');
+  document.getElementById('playEditor').value = JSON.stringify(playCatalog,null,2);
+  evaluateConflicts();
 }
 
-function build(){
- header();
- const days=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
- for(let d=1;d<=31;d++){
-   const date=new Date(2026,2,d);
-   const name=days[date.getDay()];
-   addRow(`${d} Mart 2026 ${name}`);
- }
+function renderHead(){
+  const thead=document.getElementById('thead');
+  thead.innerHTML='';
+  const tr=document.createElement('tr');
+  tr.appendChild(th(''));
+  tr.appendChild(th('SAAT'));
+  scenes.forEach(s=>tr.appendChild(th(s)));
+  tr.appendChild(th(''));
+  thead.appendChild(tr);
+}
+function th(txt){const x=document.createElement('th');x.textContent=txt;return x;}
+
+function renderBody(){
+  const tbody=document.getElementById('tbody');
+  tbody.innerHTML='';
+  monthRows.forEach(dayObj=>{
+    dayObj.slots.forEach((slot,slotIndex)=>{
+      const tr=document.createElement('tr');
+      tr.dataset.day=dayObj.day;
+      tr.dataset.slot=slotIndex;
+
+      if(slotIndex===0){
+        const left=td(dayObj.label,'date-cell');
+        left.dataset.type='date'; left.dataset.day=dayObj.day; left.rowSpan=dayObj.slots.length;
+        tr.appendChild(left);
+      }
+
+      const timeCell=td('', 'time-cell');
+      const timeInput=cellInput(slot.time,'Saat');
+      timeInput.oninput=(e)=>{slot.time=e.target.value};
+      timeCell.appendChild(timeInput);
+      timeCell.dataset.type='time';timeCell.dataset.day=dayObj.day;timeCell.dataset.slot=slotIndex;
+      tr.appendChild(timeCell);
+
+      slot.plays.forEach((play,col)=>{
+        const c=td('', 'play-cell');
+        c.dataset.type='play';c.dataset.day=dayObj.day;c.dataset.slot=slotIndex;c.dataset.col=col;
+        const input=cellInput(play,'Oyun');
+        input.setAttribute('list','playOptions');
+        input.oninput=(e)=>{
+          monthRows[dayObj.day-1].slots[slotIndex].plays[col]=e.target.value;
+          evaluateConflicts();
+        };
+        c.appendChild(input);
+        tr.appendChild(c);
+      });
+
+      if(slotIndex===0){
+        const right=td(dayObj.label,'date-cell');
+        right.dataset.type='date'; right.dataset.day=dayObj.day; right.rowSpan=dayObj.slots.length;
+        tr.appendChild(right);
+      }
+
+      tbody.appendChild(tr);
+    });
+  });
+
+  bindCellSelection();
 }
 
-function addRow(label){
- grid.appendChild(cell(label,'cell day'));
- const t=cell('','cell time');t.contentEditable=true;grid.appendChild(t);
- scenes.forEach(()=>{ const c=cell('');c.contentEditable=true;grid.appendChild(c); });
- grid.appendChild(cell(label,'cell day'));
+function td(txt,cls=''){const x=document.createElement('td');x.className=cls;x.textContent=txt;return x;}
+function cellInput(val,ph){const i=document.createElement('input');i.className='cell-input';i.value=val||'';i.placeholder=ph;return i;}
+
+function bindCellSelection(){
+  document.querySelectorAll('tbody td').forEach(el=>{
+    el.onmousedown=(e)=>{
+      if(e.target.tagName==='INPUT' && !e.ctrlKey){ clearSelection(); }
+      if(!e.ctrlKey) clearSelection();
+      toggleSelection(el);
+    };
+  });
+}
+function toggleSelection(el){
+  if(selectedCells.includes(el)){
+    selectedCells=selectedCells.filter(c=>c!==el); el.classList.remove('selected');
+  }else{ selectedCells.push(el); el.classList.add('selected'); }
+}
+function clearSelection(){ selectedCells.forEach(c=>c.classList.remove('selected')); selectedCells=[]; }
+
+function paintSelection(color){
+  const daySet=new Set();
+  selectedCells.forEach(cell=>{
+    const day=Number(cell.dataset.day);
+    if(cell.dataset.type==='date') daySet.add(day);
+    else cell.style.background=color;
+  });
+  daySet.forEach(day=>{
+    monthRows[day-1].rowColor=color;
+    document.querySelectorAll(`tbody td[data-day='${day}']`).forEach(td=>{ td.style.background=color; td.classList.add('row-painted'); });
+  });
+  clearSelection();
 }
 
-function enableSelect(el){
- el.addEventListener('mousedown',e=>{if(!e.ctrlKey)clearSel();toggle(el)});
+function bulkFillDay(){
+  const play=document.getElementById('bulkPlay').value.trim();
+  if(!play) return;
+  const dayCell=selectedCells.find(c=>c.dataset.day);
+  if(!dayCell) return;
+  const day=Number(dayCell.dataset.day);
+  monthRows[day-1].slots.forEach(slot=> slot.plays=slot.plays.map(()=>play));
+  renderBody();
+  evaluateConflicts();
 }
-function toggle(el){
- el.classList.toggle('selected');
- if(selected.includes(el))selected=selected.filter(x=>x!==el); else selected.push(el);
+
+function toggleMatinee(){
+  const dayCell=selectedCells.find(c=>c.dataset.day);
+  if(!dayCell) return;
+  const day=Number(dayCell.dataset.day);
+  const dayObj=monthRows[day-1];
+  if(dayObj.slots.length===1){
+    dayObj.slots.push({time:'', plays:Array(scenes.length).fill('')});
+  }else{
+    const suare=dayObj.slots[1];
+    const hasData=suare.time || suare.plays.some(Boolean);
+    if(!hasData) dayObj.slots.pop();
+    else alert('Suare satırında veri var. Önce temizleyin.');
+  }
+  renderBody();
+  evaluateConflicts();
 }
-function clearSel(){selected.forEach(x=>x.classList.remove('selected'));selected=[]}
 
-function paint(color){selected.forEach(c=>c.style.background=color);clearSel()}
+function renderPlayOptions(){
+  const dl=document.getElementById('playOptions');
+  dl.innerHTML='';
+  playCatalog.forEach(p=>{
+    const opt=document.createElement('option');
+    opt.value=p.name;
+    dl.appendChild(opt);
+  });
+}
 
-build();
+function evaluateConflicts(){
+  document.querySelectorAll('.conflict,.critical-conflict').forEach(x=>x.classList.remove('conflict','critical-conflict'));
+  const warnings=[];
+
+  monthRows.forEach(dayObj=>{
+    dayObj.slots.forEach((slot,slotIndex)=>{
+      const actorMap={};
+      slot.plays.forEach((playName,col)=>{
+        const play=playCatalog.find(p=>normalize(p.name)===normalize(playName));
+        if(!play) return;
+        (play.cast||[]).forEach(person=>{
+          const name=normalize(person.name);
+          actorMap[name]=actorMap[name]||[];
+          actorMap[name].push({col,critical:Boolean(person.critical),play:play.name});
+        });
+      });
+      Object.entries(actorMap).forEach(([actor,entries])=>{
+        if(entries.length<2) return;
+        const isCritical=entries.some(e=>e.critical);
+        const conflictKey=`${dayObj.day}|${slotIndex}|${actor}`;
+        if(ignoredConflicts.has(conflictKey)) return;
+        warnings.push({day:dayObj.label,slot:slotIndex+1,actor,isCritical,key:conflictKey});
+        entries.forEach(e=>{
+          const cell=document.querySelector(`td[data-day='${dayObj.day}'][data-slot='${slotIndex}'][data-col='${e.col}']`);
+          if(cell) cell.classList.add(isCritical ? 'critical-conflict':'conflict');
+        });
+      });
+    });
+  });
+
+  renderWarnings(warnings);
+}
+
+function renderWarnings(warnings){
+  const box=document.getElementById('warnings');
+  box.innerHTML='';
+  if(!warnings.length){ box.innerHTML='<small>Çakışma yok.</small>'; return; }
+  warnings.forEach(w=>{
+    const div=document.createElement('div');
+    div.className=`warning ${w.isCritical?'critical':''}`;
+    div.innerHTML=`<strong>${w.actor}</strong> aynı gün/saatte birden fazla sahnede.<small>${w.day} - Slot ${w.slot}</small>`;
+    const ignore=document.createElement('label');
+    ignore.innerHTML=`<input type='checkbox' /> Yoksay`;
+    ignore.querySelector('input').onchange=(e)=>{
+      if(e.target.checked) ignoredConflicts.add(w.key); else ignoredConflicts.delete(w.key);
+      persist('dt-ignored', Array.from(ignoredConflicts));
+      evaluateConflicts();
+    };
+    div.appendChild(ignore);
+    box.appendChild(div);
+  });
+}
+
+function saveAdmin(){
+  const sceneLines=document.getElementById('sceneEditor').value.split('\n').map(x=>x.trim()).filter(Boolean);
+  if(!sceneLines.length) return alert('En az 1 sahne girin.');
+  let parsedPlays;
+  try{ parsedPlays=JSON.parse(document.getElementById('playEditor').value); }
+  catch{ return alert('Oyun JSON formatı hatalı.'); }
+  scenes=sceneLines;
+  playCatalog=parsedPlays;
+  persist('dt-scenes', scenes);
+  persist('dt-plays', playCatalog);
+  monthRows.forEach(day=>day.slots.forEach(slot=>{
+    while(slot.plays.length<scenes.length) slot.plays.push('');
+    slot.plays=slot.plays.slice(0,scenes.length);
+  }));
+  render();
+}
+
+function setPrintSize(){
+  const v=document.getElementById('printSize').value;
+  document.body.classList.toggle('print-a3', v==='a3');
+}
+
+(async function init(){
+  // Google Sheets canlı çekim (yayınlanmış JSON/CSV endpoint girildiğinde otomatik işler)
+  const sheetUrl = localStorage.getItem('dt-sheet-url') || '';
+  if(sheetUrl){
+    try{
+      const r=await fetch(sheetUrl);
+      const data=await r.json();
+      if(Array.isArray(data?.plays) && data.plays.length){
+        playCatalog=data.plays;
+      }
+    }catch{ /* bağlantı yoksa local veri ile devam */ }
+  }
+  render();
+})();
 </script>
 </body>
 </html>
