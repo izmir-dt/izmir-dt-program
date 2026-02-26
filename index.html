@@ -118,6 +118,8 @@
     <button class="secondary" onclick="bulkFillDay()">Seçili Güne Toplu Doldur</button>
     <button class="secondary" onclick="toggleMatinee()">Matine/Suare Ekle-Kaldır</button>
     <button class="secondary" onclick="syncSelectedDayToSheet()">Seçili Günü Sheet'e Yaz</button>
+    <button class="secondary" onclick="fillDemoData()">Demo Veri Doldur</button>
+    <button class="secondary" onclick="clearDemoData()">Demo Veriyi Temizle</button>
     <small>İpucu: Enter sağa geçer, Ctrl+Enter seçili hücrelere yazar, toplu yapıştırma destekli.</small>
   </div>
 
@@ -452,6 +454,36 @@ function toggleMatinee(){
   }
   renderBody();
   evaluateConflicts();
+}
+
+
+function fillDemoData(){
+  if(!Array.isArray(playCatalog) || !playCatalog.length){
+    setApiStatus('Önce oyunları yükleyin veya admin JSON'a oyun ekleyin.', true);
+    return;
+  }
+  const names=playCatalog.map(p=>p?.name).filter(Boolean);
+  const pick=(i)=>names[i % names.length] || '';
+  for(let day=1; day<=3; day++){
+    const dayObj=monthRows[day-1];
+    if(!dayObj) continue;
+    dayObj.slots[0].time = day===1 ? '20:00' : (day===2 ? '15:00' : '20:30');
+    dayObj.slots[0].plays = dayObj.slots[0].plays.map((_,idx)=> pick(day+idx));
+  }
+  renderBody();
+  evaluateConflicts();
+  setApiStatus('Demo verisi 3 güne dolduruldu. Şimdi tabloyu deneyebilirsiniz.');
+}
+
+function clearDemoData(){
+  monthRows.forEach(dayObj=>{
+    dayObj.slots = [{time:'', plays:Array(scenes.length).fill('')}];
+    dayObj.rowColor='';
+  });
+  clearSelection();
+  renderBody();
+  evaluateConflicts();
+  setApiStatus('Demo verisi temizlendi.');
 }
 
 function saveConnectionSettings(){
