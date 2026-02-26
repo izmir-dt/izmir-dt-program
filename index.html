@@ -46,6 +46,8 @@
   .admin textarea{width:100%;min-height:90px;font-family:monospace}
   .help{margin:8px 0;padding:8px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:6px;font-size:12px;line-height:1.45}
   .status{margin-top:8px;font-size:12px;color:#1f2937}
+  .quick-start{margin:10px 0;padding:10px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:8px;font-size:13px;line-height:1.5}
+  .quick-start b{display:block;margin-bottom:4px}
 
   @media print{
     body{background:#fff}
@@ -65,6 +67,13 @@
     <div class="left">MART 2026</div>
     <div class="center">İZMİR DEVLET TİYATROSU MÜDÜRLÜĞÜ</div>
     <div class="right">MART 2026</div>
+  </div>
+
+  <div class="quick-start">
+    <b>Ne yapmalıyım? (Hızlı Başlangıç)</b>
+    1) Admin Panel'e Apps Script <b>Oyun Listesi URL</b> ve <b>Yazma URL</b> yapıştır.
+    2) <b>Bağlantı Ayarını Kaydet</b> → <b>Oyunları API'den Yenile</b>.
+    3) Tabloda bir gün seç, oyunları yaz, sonra <b>Seçili Günü Sheet'e Yaz</b>.
   </div>
 
   <div class="toolbar">
@@ -152,6 +161,16 @@ function setApiStatus(msg,isError=false){
   if(!el) return;
   el.textContent=msg||'';
   el.style.color=isError ? '#b91c1c' : '#1f2937';
+}
+
+function showFirstRunStatus(){
+  const hasGames=Boolean(gamesApiUrl);
+  const hasWrite=Boolean(writeApiUrl);
+  if(!hasGames || !hasWrite){
+    setApiStatus('Kurulum bekleniyor: önce Games API ve Write API URL girip kaydedin.', true);
+  }else{
+    setApiStatus('Bağlantı hazır. Oyunları API'den yenileyip gün seçerek Sheet'e yazabilirsiniz.');
+  }
 }
 
 function buildMonthRows(){
@@ -575,6 +594,7 @@ function setPrintSize(){
     }catch{ /* bağlantı yoksa local veri ile devam */ }
   }
   render();
+  showFirstRunStatus();
 })();
 </script>
 </body>
