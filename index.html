@@ -102,6 +102,42 @@ function clearSel(){selected.forEach(x=>x.classList.remove('selected'));selected
 function paint(color){selected.forEach(c=>c.style.background=color);clearSel()}
 
 build();
+
+// ===== ENTER = COMMIT =====
+grid.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const cell = e.target;
+  if (!cell.isContentEditable) return;
+  e.preventDefault();
+  const value = cell.innerText.trim();
+  const col = [...cell.parentElement.children].indexOf(cell);
+  const row = Math.floor([...grid.children].indexOf(cell) / (scenes.length+3));
+  commitCell(row, col, value);
+});
+
+// ===== DATA MODEL =====
+let program = {};
+
+function commitCell(row, col, value){
+  const dateCell = grid.children[row*(scenes.length+3)];
+  const date = dateCell.innerText.split(" ").slice(0,3).join(" ");
+  if(!program[date]) program[date]={};
+  if(col===1){
+    program[date].saat=value;
+  } else {
+    const scene = scenes[col-2];
+    if(!program[date][scene]) program[date][scene]=[];
+    if(value) program[date][scene].push(value);
+  }
+  console.log("PROGRAM =",program);
+  render();
+}
+
+function render(){
+ console.clear();
+ console.log("RENDER ÇALIŞTI");
+ console.table(program);
+}
 </script>
 </body>
 </html>
