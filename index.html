@@ -48,6 +48,7 @@
   .status{margin-top:8px;font-size:12px;color:#1f2937}
   .quick-start{margin:10px 0;padding:10px;border:1px solid #c7d2fe;background:#eef2ff;border-radius:8px;font-size:13px;line-height:1.5}
   .quick-start b{display:block;margin-bottom:4px}
+  .primary{background:#16a34a;border-color:#15803d;color:#fff}
 
   @media print{
     body{background:#fff}
@@ -117,6 +118,7 @@
         <input id="gamesApiUrl" class="inline" placeholder="https://script.google.com/.../exec?api=games" />
         <small>Apps Script Yazma API URL</small>
         <input id="writeApiUrl" class="inline" placeholder="https://script.google.com/.../exec" />
+        <button class="primary" onclick="setupAndLoadGames()">1) Kurulumu Yap + Oyunları Yükle</button>
         <button class="secondary" onclick="saveConnectionSettings()">Bağlantı Ayarını Kaydet</button>
         <button class="secondary" onclick="reloadCatalogFromApi()">Oyunları API'den Yenile</button>
         <div id="apiStatus" class="status"></div>
@@ -167,9 +169,9 @@ function showFirstRunStatus(){
   const hasGames=Boolean(gamesApiUrl);
   const hasWrite=Boolean(writeApiUrl);
   if(!hasGames || !hasWrite){
-    setApiStatus('Kurulum bekleniyor: önce Games API ve Write API URL girip kaydedin.', true);
+    setApiStatus('Adım 1: Games API + Write API URL girin. Sonra "1) Kurulumu Yap + Oyunları Yükle" butonuna basın.', true);
   }else{
-    setApiStatus('Bağlantı hazır. Oyunları API'den yenileyip gün seçerek Sheet'e yazabilirsiniz.');
+    setApiStatus('Adım 2: Tabloda günü seçin, oyunları girin. Adım 3: "Seçili Günü Sheet'e Yaz" butonuna basın.');
   }
 }
 
@@ -430,6 +432,13 @@ function saveConnectionSettings(){
   localStorage.setItem('dt-games-api-url', gamesApiUrl);
   localStorage.setItem('dt-write-api-url', writeApiUrl);
   setApiStatus('Bağlantı ayarları kaydedildi.');
+}
+
+
+async function setupAndLoadGames(){
+  saveConnectionSettings();
+  setApiStatus('Kurulum kaydedildi. Oyun listesi yükleniyor...');
+  await reloadCatalogFromApi();
 }
 
 async function reloadCatalogFromApi(){
