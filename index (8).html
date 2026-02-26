@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>İzmir DT Aylık Program</title>
+<style>
+body{margin:0;font-family:Arial;background:#eef1f4}
+.wrapper{max-width:1500px;margin:auto;padding:10px}
+
+/* HEADER */
+.header{display:grid;grid-template-columns:180px 1fr 180px;background:#ffe600;border:1px solid #999;border-bottom:none;font-weight:800;align-items:center}
+.header div{padding:10px 12px;font-size:20px}
+.header .left{text-align:left}
+.header .center{text-align:center}
+.header .right{text-align:right}
+
+/* GRID */
+.grid{display:grid;grid-template-columns:220px 80px repeat(6,1fr) 220px;border:1px solid #999;background:#fff}
+.head{background:#e5e7eb;font-weight:700;text-align:center;padding:6px;border:1px solid #999;white-space:nowrap;font-size:12px}
+.cell{border:1px solid #999;padding:6px;min-height:32px}
+.day{background:#f9fafb;font-weight:700;display:flex;align-items:center;padding-left:10px;white-space:nowrap}
+.time{text-align:center}
+.selected{outline:3px solid #2563eb}
+
+/* TOOLBAR */
+.toolbar{margin:10px 0;display:flex;gap:10px}
+button{padding:8px 14px;font-weight:700;border:none;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer}
+button:hover{background:#1e4fd1}
+.color{width:28px;height:28px;border:1px solid #444;cursor:pointer}
+
+/* PRINT */
+@media print{
+ body{background:white}
+ .toolbar{display:none}
+ @page{size:A4 landscape;margin:10mm}
+}
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<div class="header">
+ <div class="left">MART 2026</div>
+ <div class="center">İZMİR DEVLET TİYATROSU MÜDÜRLÜĞÜ</div>
+ <div class="right">MART 2026</div>
+</div>
+
+<div class="toolbar">
+ <button onclick="window.print()">Yazdır</button>
+ <div class="color" style="background:#fde047" onclick="paint('#fde047')"></div>
+ <div class="color" style="background:#fecaca" onclick="paint('#fecaca')"></div>
+ <div class="color" style="background:#bbf7d0" onclick="paint('#bbf7d0')"></div>
+</div>
+
+<div class="grid" id="grid"></div>
+</div>
+
+<script>
+const grid=document.getElementById('grid');
+const scenes=["KARŞIYAKA RAGIP HAYKIR","BKSM BOZKURT KURUÇ","URLA AKM","TURNE","TURNE","TURNE"];
+let selected=[];
+
+function cell(txt,cls='cell'){
+ const d=document.createElement('div');d.className=cls;d.textContent=txt;enableSelect(d);return d;
+}
+
+function header(){
+ grid.innerHTML='';
+ grid.appendChild(cell('', 'head'));
+ grid.appendChild(cell('SAAT','head'));
+ scenes.forEach(s=>grid.appendChild(cell(s,'head')));
+ grid.appendChild(cell('', 'head'));
+}
+
+function build(){
+ header();
+ const days=["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
+ for(let d=1;d<=31;d++){
+   const date=new Date(2026,2,d);
+   const name=days[date.getDay()];
+   addRow(`${d} Mart 2026 ${name}`);
+ }
+}
+
+function addRow(label){
+ grid.appendChild(cell(label,'cell day'));
+ const t=cell('','cell time');t.contentEditable=true;grid.appendChild(t);
+ scenes.forEach(()=>{ const c=cell('');c.contentEditable=true;grid.appendChild(c); });
+ grid.appendChild(cell(label,'cell day'));
+}
+
+function enableSelect(el){
+ el.addEventListener('mousedown',e=>{if(!e.ctrlKey)clearSel();toggle(el)});
+}
+function toggle(el){
+ el.classList.toggle('selected');
+ if(selected.includes(el))selected=selected.filter(x=>x!==el); else selected.push(el);
+}
+function clearSel(){selected.forEach(x=>x.classList.remove('selected'));selected=[]}
+
+function paint(color){selected.forEach(c=>c.style.background=color);clearSel()}
+
+build();
+</script>
+</body>
+</html>
