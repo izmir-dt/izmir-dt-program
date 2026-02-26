@@ -80,6 +80,7 @@
     <button class="secondary" onclick="bulkFillDay()">Seçili Güne Toplu Doldur</button>
     <button class="secondary" onclick="toggleMatinee()">Matine/Suare Ekle-Kaldır</button>
     <button class="secondary" onclick="syncSelectedDayToSheet()">Seçili Günü Sheet'e Yaz</button>
+    <small>İpucu: Enter sağa geçer, Ctrl+Enter seçili hücrelere yazar, toplu yapıştırma destekli.</small>
   </div>
 
   <div class="layout">
@@ -138,6 +139,7 @@ let gamesApiUrl = localStorage.getItem('dt-games-api-url') || '';
 let writeApiUrl = localStorage.getItem('dt-write-api-url') || '';
 const monthRows = buildMonthRows();
 let selectedCells=[];
+let activeCell=null;
 
 function loadJSON(key,fallback){
   try{ return JSON.parse(localStorage.getItem(key)) ?? fallback; }
@@ -241,12 +243,112 @@ function renderBody(){
 function td(txt,cls=''){const x=document.createElement('td');x.className=cls;x.textContent=txt;return x;}
 function cellInput(val,ph){const i=document.createElement('input');i.className='cell-input';i.value=val||'';i.placeholder=ph;return i;}
 
+
+function getInputFromCell(cell){
+  return cell ? cell.querySelector('input.cell-input') : null;
+}
+
+function focusCell(cell){
+  const input=getInputFromCell(cell);
+  if(input){
+    input.focus();
+    input.select();
+  }
+  activeCell=cell || null;
+}
+
+function getNavCell(cell,dx,dy){
+  if(!cell) return null;
+  const day=Number(cell.dataset.day || 0);
+  const slot=Number(cell.dataset.slot || 0);
+  const col=Number(cell.dataset.col || -1);
+  if(day<=0 || col<0) return null;
+  const nextDay=day+dy;
+  if(nextDay<1 || nextDay>monthRows.length) return null;
+  const targetSlot=Math.max(0, Math.min(slot, monthRows[nextDay-1].slots.length-1));
+  const selector=`td[data-type='play'][data-day='${nextDay}'][data-slot='${targetSlot}'][data-col='${col+dx}']`;
+  const sameRow=`td[data-type='play'][data-day='${day}'][data-slot='${slot}'][data-col='${col+dx}']`;
+  return document.querySelector(dx !== 0 ? sameRow : selector);
+}
+
+function applyValueToCell(cell,value){
+  const day=Number(cell?.dataset.day || 0);
+  const slot=Number(cell?.dataset.slot || 0);
+  const col=Number(cell?.dataset.col ?? -1);
+  if(day<=0 || col<0) return;
+  monthRows[day-1].slots[slot].plays[col]=value;
+  const input=getInputFromCell(cell);
+  if(input) input.value=value;
+}
+
+function applyValueToSelection(value){
+  const playCells=selectedCells.filter(c=>c.dataset.type==='play');
+  if(!playCells.length) return;
+  playCells.forEach(cell=>applyValueToCell(cell,value));
+  evaluateConflicts();
+}
+
+function parseClipboardGrid(text){
+  return String(text || '')
+    .replace(/\r\n/g,'\n')
+    .replace(/\r/g,'\n')
+    .split('\n')
+    .filter(Boolean)
+    .map(row=>row.split('\t'));
+}
+
+function pasteGridIntoSchedule(startCell, grid){
+  if(!startCell || !Array.isArray(grid) || !grid.length) return;
+  const baseDay=Number(startCell.dataset.day || 0);
+  const baseSlot=Number(startCell.dataset.slot || 0);
+  const baseCol=Number(startCell.dataset.col || 0);
+  grid.forEach((row,r)=>{
+    row.forEach((value,c)=>{
+      const day=baseDay+r;
+      if(day<1 || day>monthRows.length) return;
+      const slot=Math.max(0, Math.min(baseSlot, monthRows[day-1].slots.length-1));
+      const col=baseCol+c;
+      const cell=document.querySelector(`td[data-type='play'][data-day='${day}'][data-slot='${slot}'][data-col='${col}']`);
+      if(!cell) return;
+      applyValueToCell(cell,value.trim());
+    });
+  });
+  evaluateConflicts();
+}
+
 function bindCellSelection(){
-  document.querySelectorAll('tbody td').forEach(el=>{
+  document.querySelectorAll("tbody td[data-type='play'], tbody td[data-type='time'], tbody td[data-type='date']").forEach(el=>{
     el.onmousedown=(e)=>{
       if(e.target.tagName==='INPUT' && !e.ctrlKey){ clearSelection(); }
       if(!e.ctrlKey) clearSelection();
       toggleSelection(el);
+      if(el.dataset.type==='play') focusCell(el);
+    };
+  });
+
+  document.querySelectorAll("tbody td[data-type='play'] input.cell-input").forEach(input=>{
+    const cell=input.closest('td');
+    input.onfocus=()=>{ activeCell=cell; };
+    input.onkeydown=(e)=>{
+      if(e.key==='Enter'){
+        e.preventDefault();
+        if(e.ctrlKey){
+          applyValueToSelection(input.value);
+          return;
+        }
+        const next=getNavCell(cell,1,0);
+        if(next) focusCell(next);
+      }else if(e.key==='ArrowRight' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,1,0); if(n) focusCell(n); }
+      else if(e.key==='ArrowLeft' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,-1,0); if(n) focusCell(n); }
+      else if(e.key==='ArrowDown' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,0,1); if(n) focusCell(n); }
+      else if(e.key==='ArrowUp' && e.altKey){ e.preventDefault(); const n=getNavCell(cell,0,-1); if(n) focusCell(n); }
+    };
+    input.onpaste=(e)=>{
+      const text=e.clipboardData?.getData('text/plain');
+      const grid=parseClipboardGrid(text);
+      if(grid.length<=1 && (grid[0]||[]).length<=1) return;
+      e.preventDefault();
+      pasteGridIntoSchedule(cell, grid);
     };
   });
 }
@@ -390,12 +492,13 @@ function renderPlayOptions(){
 function evaluateConflicts(){
   document.querySelectorAll('.conflict,.critical-conflict').forEach(x=>x.classList.remove('conflict','critical-conflict'));
   const warnings=[];
+  const playMap = new Map(playCatalog.map(p=>[normalize(p.name), p]));
 
   monthRows.forEach(dayObj=>{
     dayObj.slots.forEach((slot,slotIndex)=>{
       const actorMap={};
       slot.plays.forEach((playName,col)=>{
-        const play=playCatalog.find(p=>normalize(p.name)===normalize(playName));
+        const play=playMap.get(normalize(playName));
         if(!play) return;
         (play.cast||[]).forEach(person=>{
           const name=normalize(person.name);
