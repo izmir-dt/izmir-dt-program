@@ -44,6 +44,8 @@
   .warning.critical{border-color:#dc2626;background:#fef2f2}
   .warning small{display:block;margin-top:4px;color:#374151}
   .admin textarea{width:100%;min-height:90px;font-family:monospace}
+  .help{margin:8px 0;padding:8px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:6px;font-size:12px;line-height:1.45}
+  .status{margin-top:8px;font-size:12px;color:#1f2937}
 
   @media print{
     body{background:#fff}
@@ -94,13 +96,20 @@
       <div id="warnings"></div>
 
       <div class="admin">
-        <h3>Admin Panel</h3>
+        <h3>Admin Panel (Basit Kurulum)</h3>
+        <div class="help">
+          1) Apps Script'ten <b>Oyun Listesi URL</b> ve <b>Yazma URL</b> gir.<br/>
+          2) <b>Bağlantı Ayarını Kaydet</b>'e bas.<br/>
+          3) <b>Oyunları API'den Yenile</b> ile oyun adlarını çek.<br/>
+          4) Tabloda bir gün seçip <b>Seçili Günü Sheet'e Yaz</b> butonuna bas.
+        </div>
         <small>Apps Script Oyun Listesi JSON URL</small>
         <input id="gamesApiUrl" class="inline" placeholder="https://script.google.com/.../exec?api=games" />
         <small>Apps Script Yazma API URL</small>
         <input id="writeApiUrl" class="inline" placeholder="https://script.google.com/.../exec" />
         <button class="secondary" onclick="saveConnectionSettings()">Bağlantı Ayarını Kaydet</button>
         <button class="secondary" onclick="reloadCatalogFromApi()">Oyunları API'den Yenile</button>
+        <div id="apiStatus" class="status"></div>
         <small>Sahne adları (satır başına 1 sahne)</small>
         <textarea id="sceneEditor"></textarea>
         <small>Oyun/Cast JSON (kritik rol için <code>"critical":true</code>)</small>
@@ -136,6 +145,12 @@ function loadJSON(key,fallback){
 }
 function persist(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
 function normalize(v){ return (v||'').trim().toLocaleUpperCase('tr-TR'); }
+function setApiStatus(msg,isError=false){
+  const el=document.getElementById('apiStatus');
+  if(!el) return;
+  el.textContent=msg||'';
+  el.style.color=isError ? '#b91c1c' : '#1f2937';
+}
 
 function buildMonthRows(){
   const rows=[];
@@ -293,25 +308,25 @@ function saveConnectionSettings(){
   writeApiUrl = document.getElementById('writeApiUrl').value.trim();
   localStorage.setItem('dt-games-api-url', gamesApiUrl);
   localStorage.setItem('dt-write-api-url', writeApiUrl);
-  alert('Bağlantı ayarları kaydedildi.');
+  setApiStatus('Bağlantı ayarları kaydedildi.');
 }
 
 async function reloadCatalogFromApi(){
   const url=document.getElementById('gamesApiUrl').value.trim();
-  if(!url) return alert('Önce oyun listesi API URL girin.');
+  if(!url) return setApiStatus('Önce oyun listesi API URL girin.', true);
   try{
     const r=await fetch(url);
     const data=await r.json();
     const apiPlays = normalizeApiPlays(data);
-    if(!apiPlays.length) return alert('API verisi boş veya format uyumsuz.');
+    if(!apiPlays.length) return setApiStatus('API verisi boş veya format uyumsuz.', true);
     playCatalog=apiPlays;
     persist('dt-plays', playCatalog);
     gamesApiUrl=url;
     localStorage.setItem('dt-games-api-url', gamesApiUrl);
     render();
-    alert('Oyun listesi API üzerinden güncellendi.');
+    setApiStatus('Oyun listesi API üzerinden güncellendi.');
   }catch(err){
-    alert('API okunamadı: ' + err.message);
+    setApiStatus('API okunamadı: ' + err.message, true);
   }
 }
 
@@ -324,9 +339,9 @@ function normalizeApiPlays(data){
 
 async function syncSelectedDayToSheet(){
   const day=getSelectedDay();
-  if(!day) return alert('Önce bir gün seçin.');
+  if(!day) return setApiStatus('Önce tabloda bir gün seçin.', true);
   const url=(document.getElementById('writeApiUrl').value || '').trim();
-  if(!url) return alert('Yazma API URL girin.');
+  if(!url) return setApiStatus('Yazma API URL girin.', true);
 
   const dayObj=monthRows[day-1];
   const requests=[];
@@ -343,7 +358,7 @@ async function syncSelectedDayToSheet(){
       });
     });
   });
-  if(!requests.length) return alert('Seçili günde yazılacak oyun yok.');
+  if(!requests.length) return setApiStatus('Seçili günde yazılacak oyun yok.', true);
 
   try{
     for(const payload of requests){
@@ -356,9 +371,9 @@ async function syncSelectedDayToSheet(){
     }
     writeApiUrl=url;
     localStorage.setItem('dt-write-api-url', writeApiUrl);
-    alert('Seçili gün Google Sheet API\'ye yazıldı.');
+    setApiStatus("Seçili gün Google Sheet API'ye yazıldı.");
   }catch(err){
-    alert('Yazma başarısız: '+err.message+' (Apps Script doPost + CORS ayarını kontrol edin)');
+    setApiStatus('Yazma başarısız: '+err.message+' (Apps Script doPost + CORS ayarını kontrol edin)', true);
   }
 }
 
