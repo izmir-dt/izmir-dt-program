@@ -77,6 +77,7 @@
     <input id="bulkPlay" class="inline" placeholder="Toplu doldurma için oyun adı" />
     <button class="secondary" onclick="bulkFillDay()">Seçili Güne Toplu Doldur</button>
     <button class="secondary" onclick="toggleMatinee()">Matine/Suare Ekle-Kaldır</button>
+    <button class="secondary" onclick="syncSelectedDayToSheet()">Seçili Günü Sheet'e Yaz</button>
   </div>
 
   <div class="layout">
@@ -94,6 +95,12 @@
 
       <div class="admin">
         <h3>Admin Panel</h3>
+        <small>Apps Script Oyun Listesi JSON URL</small>
+        <input id="gamesApiUrl" class="inline" placeholder="https://script.google.com/.../exec?api=games" />
+        <small>Apps Script Yazma API URL</small>
+        <input id="writeApiUrl" class="inline" placeholder="https://script.google.com/.../exec" />
+        <button class="secondary" onclick="saveConnectionSettings()">Bağlantı Ayarını Kaydet</button>
+        <button class="secondary" onclick="reloadCatalogFromApi()">Oyunları API'den Yenile</button>
         <small>Sahne adları (satır başına 1 sahne)</small>
         <textarea id="sceneEditor"></textarea>
         <small>Oyun/Cast JSON (kritik rol için <code>"critical":true</code>)</small>
@@ -118,6 +125,8 @@ const defaults = {
 let scenes = loadJSON('dt-scenes', defaults.scenes);
 let playCatalog = loadJSON('dt-plays', defaults.plays);
 const ignoredConflicts = new Set(loadJSON('dt-ignored', []));
+let gamesApiUrl = localStorage.getItem('dt-games-api-url') || '';
+let writeApiUrl = localStorage.getItem('dt-write-api-url') || '';
 const monthRows = buildMonthRows();
 let selectedCells=[];
 
@@ -149,6 +158,8 @@ function render(){
   renderPlayOptions();
   document.getElementById('sceneEditor').value = scenes.join('\n');
   document.getElementById('playEditor').value = JSON.stringify(playCatalog,null,2);
+  document.getElementById('gamesApiUrl').value = gamesApiUrl;
+  document.getElementById('writeApiUrl').value = writeApiUrl;
   evaluateConflicts();
 }
 
@@ -256,10 +267,14 @@ function bulkFillDay(){
   evaluateConflicts();
 }
 
-function toggleMatinee(){
+function getSelectedDay(){
   const dayCell=selectedCells.find(c=>c.dataset.day);
-  if(!dayCell) return;
-  const day=Number(dayCell.dataset.day);
+  return dayCell ? Number(dayCell.dataset.day) : 0;
+}
+
+function toggleMatinee(){
+  const day=getSelectedDay();
+  if(!day) return;
   const dayObj=monthRows[day-1];
   if(dayObj.slots.length===1){
     dayObj.slots.push({time:'', plays:Array(scenes.length).fill('')});
@@ -271,6 +286,80 @@ function toggleMatinee(){
   }
   renderBody();
   evaluateConflicts();
+}
+
+function saveConnectionSettings(){
+  gamesApiUrl = document.getElementById('gamesApiUrl').value.trim();
+  writeApiUrl = document.getElementById('writeApiUrl').value.trim();
+  localStorage.setItem('dt-games-api-url', gamesApiUrl);
+  localStorage.setItem('dt-write-api-url', writeApiUrl);
+  alert('Bağlantı ayarları kaydedildi.');
+}
+
+async function reloadCatalogFromApi(){
+  const url=document.getElementById('gamesApiUrl').value.trim();
+  if(!url) return alert('Önce oyun listesi API URL girin.');
+  try{
+    const r=await fetch(url);
+    const data=await r.json();
+    const apiPlays = normalizeApiPlays(data);
+    if(!apiPlays.length) return alert('API verisi boş veya format uyumsuz.');
+    playCatalog=apiPlays;
+    persist('dt-plays', playCatalog);
+    gamesApiUrl=url;
+    localStorage.setItem('dt-games-api-url', gamesApiUrl);
+    render();
+    alert('Oyun listesi API üzerinden güncellendi.');
+  }catch(err){
+    alert('API okunamadı: ' + err.message);
+  }
+}
+
+function normalizeApiPlays(data){
+  if(Array.isArray(data?.plays)) return data.plays;
+  if(Array.isArray(data?.games)) return data.games.map(name=>({name,cast:[]}));
+  if(Array.isArray(data)) return data.map(name=>({name,cast:[]}));
+  return [];
+}
+
+async function syncSelectedDayToSheet(){
+  const day=getSelectedDay();
+  if(!day) return alert('Önce bir gün seçin.');
+  const url=(document.getElementById('writeApiUrl').value || '').trim();
+  if(!url) return alert('Yazma API URL girin.');
+
+  const dayObj=monthRows[day-1];
+  const requests=[];
+  dayObj.slots.forEach(slot=>{
+    slot.plays.forEach((play,col)=>{
+      const cleaned=play.trim();
+      if(!cleaned) return;
+      requests.push({
+        action:'writeProgramDay',
+        date:`2026-03-${String(day).padStart(2,'0')}`,
+        play:cleaned,
+        time:(slot.time || '').trim(),
+        stage:scenes[col]
+      });
+    });
+  });
+  if(!requests.length) return alert('Seçili günde yazılacak oyun yok.');
+
+  try{
+    for(const payload of requests){
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    }
+    writeApiUrl=url;
+    localStorage.setItem('dt-write-api-url', writeApiUrl);
+    alert('Seçili gün Google Sheet API\'ye yazıldı.');
+  }catch(err){
+    alert('Yazma başarısız: '+err.message+' (Apps Script doPost + CORS ayarını kontrol edin)');
+  }
 }
 
 function renderPlayOptions(){
@@ -359,15 +448,12 @@ function setPrintSize(){
 }
 
 (async function init(){
-  // Google Sheets canlı çekim (yayınlanmış JSON/CSV endpoint girildiğinde otomatik işler)
-  const sheetUrl = localStorage.getItem('dt-sheet-url') || '';
-  if(sheetUrl){
+  if(gamesApiUrl){
     try{
-      const r=await fetch(sheetUrl);
+      const r=await fetch(gamesApiUrl);
       const data=await r.json();
-      if(Array.isArray(data?.plays) && data.plays.length){
-        playCatalog=data.plays;
-      }
+      const apiPlays=normalizeApiPlays(data);
+      if(apiPlays.length) playCatalog=apiPlays;
     }catch{ /* bağlantı yoksa local veri ile devam */ }
   }
   render();
